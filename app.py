@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, url_for, redirect, send_from_directory
 import os
 import pandas as pd
+import openpyxl
 import zipfile
 import io   
 from docxtpl import DocxTemplate
+from click.core import ParameterSource
 from werkzeug.utils import secure_filename
 from datetime import datetime
-
 
 app = Flask(__name__)
 
@@ -32,7 +33,7 @@ def fill_word_template(excel_data, word_template_path):
         context = {
             'CONTRATACAO': tb_df.loc[i, 'DATA CONTRATACAO'],
             'REDE': tb_df.loc[i, 'REDE'],
-            'PDV': tb_df.loc[i, 'NOME DO PDV'],
+            'PDV': tb_df.loc[i, 'PDV'],
             'ENDEREÇO_PDV': tb_df.loc[i, 'ENDEREÇO PDV'],
             'NOME': tb_df.loc[i, 'NOME DO COLABORADOR'],
             'RG': tb_df.loc[i, 'RG'],
@@ -45,12 +46,15 @@ def fill_word_template(excel_data, word_template_path):
             'EMPRESA': tb_df.loc[i, 'EMPRESA']
         }
         
-        # Renderiza o documento com os dados
+        # Verificador de preenchimento
+        print(f"Context for row {i}: {context}")
+        
+        # Renderiza o documento com os dadosw
         doc.render(context)
         
         # Gera o nome do arquivo com 'NOME DO COLABOROADR'e 'PDV'
         nome = str(tb_df.loc[i, 'NOME DO COLABORADOR'])
-        pdv = str(tb_df.loc[i, 'NOME DO PDV'])
+        pdv = str(tb_df.loc[i, 'PDV'])
         output_filename = f"{nome}_{pdv}.docx"
 
         # Salva o documento preenchido na memoria
