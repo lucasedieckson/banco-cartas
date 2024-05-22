@@ -1,12 +1,9 @@
-from flask import Flask, render_template, request, send_file, url_for, redirect, send_from_directory
+from flask import Flask, render_template, request, send_file
 import os
 import pandas as pd
-import openpyxl
 import zipfile
-import io   
+import io
 from docxtpl import DocxTemplate
-from click.core import ParameterSource
-from werkzeug.utils import secure_filename
 from datetime import datetime
 
 app = Flask(__name__)
@@ -20,7 +17,7 @@ def fill_word_template(excel_data, word_template_path):
     # Carrega o arquivo Excel
     tb_df = pd.read_excel(excel_data)
     
-    # Formata a coluna 'DATA CONTRATACAO' para o formato '%d/%m/%Y
+    # Formata a coluna 'DATA CONTRATACAO' para o formato '%d/%m/%Y'
     tb_df['DATA CONTRATACAO'] = tb_df['DATA CONTRATACAO'].dt.strftime('%d/%m/%Y')
     
     output_files = []
@@ -29,11 +26,11 @@ def fill_word_template(excel_data, word_template_path):
         # Carrega o modelo do Word
         doc = DocxTemplate(word_template_path)
 
-        # Dicionário com os dados para preenchimento que fará a alteração nos campos {} do template do word
+        # Dicionário com os dados para preenchimento
         context = {
             'CONTRATACAO': tb_df.loc[i, 'DATA CONTRATACAO'],
             'REDE': tb_df.loc[i, 'REDE'],
-            'PDV': tb_df.loc[i, 'PDV'],
+            'PDV': tb_df.loc[i, 'NOME DO PDV'],
             'ENDEREÇO_PDV': tb_df.loc[i, 'ENDEREÇO PDV'],
             'NOME': tb_df.loc[i, 'NOME DO COLABORADOR'],
             'RG': tb_df.loc[i, 'RG'],
@@ -46,18 +43,15 @@ def fill_word_template(excel_data, word_template_path):
             'EMPRESA': tb_df.loc[i, 'EMPRESA']
         }
         
-        # Verificador de preenchimento
-        print(f"Context for row {i}: {context}")
-        
-        # Renderiza o documento com os dadosw
+        # Renderiza o documento com os dados
         doc.render(context)
         
-        # Gera o nome do arquivo com 'NOME DO COLABOROADR'e 'PDV'
+        # Gera o nome do arquivo com 'NOME DO COLABORADOR' e 'PDV'
         nome = str(tb_df.loc[i, 'NOME DO COLABORADOR'])
-        pdv = str(tb_df.loc[i, 'PDV'])
+        pdv = str(tb_df.loc[i, 'NOME DO PDV'])
         output_filename = f"{nome}_{pdv}.docx"
 
-        # Salva o documento preenchido na memoria
+        # Salva o documento preenchido na memória
         output_stream = io.BytesIO()
         doc.save(output_stream)
         output_stream.seek(0)
@@ -66,7 +60,6 @@ def fill_word_template(excel_data, word_template_path):
         if tb_df.iloc[i].isnull().all():
             break    
 
-    # Retorna os nomes dos arquivos gerados
     return output_files
 
 @app.route('/', methods=['GET', 'POST'])
@@ -91,12 +84,12 @@ def index():
         word_template = request.form.get('word_template')
 
         # Caminho do modelo do Word
-        word_template_path = os.path.join(app.root_path,'templates', f'{word_template}.docx')
+        word_template_path = os.path.join(app.root_path, 'templates', f'{word_template}.docx')
 
         # Preenche um documento Word para cada linha do arquivo Excel
         output_files = fill_word_template(excel_file, word_template_path)
 
-         # Cria um arquivo ZIP em memória com todos os documentos preenchidos
+        # Cria um arquivo ZIP em memória com todos os documentos preenchidos
         zip_stream = io.BytesIO()
         with zipfile.ZipFile(zip_stream, 'w') as zipf:
             for filename, file_stream in output_files:
@@ -118,10 +111,8 @@ def index():
             download_name=nome_arquivo_zip
         )
         
-        # Renderiza a página novamente com a mensagem de sucesso
-        return response, render_template('index.html', message='Cartas preenchidas com sucesso!')
-        
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
